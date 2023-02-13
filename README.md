@@ -16,6 +16,9 @@ GITHUB_USER=<username>
 GITHUB_TOKEN=<40-character alphanumeric ID>
 REPO_OWNER=<Repo fork>
 REPO_NAME=<Repo name, forming URL with above>
+BOT_DEBUG=<bool>
+LOG_LEVEL=<INFO, DEBUG>
+THEGAME_ROOT=<local directory to automation/>
 ```
 
 ## Usage
