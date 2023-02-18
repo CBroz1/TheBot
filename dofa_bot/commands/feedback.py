@@ -2,7 +2,7 @@ import lightbulb
 import os
 import json
 import requests
-
+from datetime import datetime
 from dotenv import load_dotenv
 
 from ..utils.logger import logger, DEBUG
@@ -10,6 +10,15 @@ from ..utils.logger import logger, DEBUG
 feedback_plugin = lightbulb.Plugin(
     "feedback_plugin", "Send feedback to GitHub via DeckOfAdventuresBot"
 )
+
+timecode = datetime.now().strftime("%m-%d %H:%M:%S")
+
+
+@feedback_plugin.command
+@lightbulb.command("start_time", "Time bot started", aliases=["version", "time"])
+@lightbulb.implements(lightbulb.SlashCommand)
+async def start_time(ctx):
+    return await ctx.edit_response(timecode)
 
 
 @feedback_plugin.command
