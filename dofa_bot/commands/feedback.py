@@ -18,7 +18,7 @@ timecode = datetime.now().strftime("%m-%d %H:%M:%S")
 @lightbulb.command("start_time", "Time bot started", aliases=["version", "time"])
 @lightbulb.implements(lightbulb.SlashCommand)
 async def start_time(ctx):
-    return await ctx.edit_response(timecode)
+    return await ctx.respond(timecode)
 
 
 @feedback_plugin.command
@@ -51,7 +51,7 @@ async def feedback(ctx):
 
     if DEBUG:
         logger.info(f"Issue created in debug mode: {ctx.options.title}")
-        await ctx.edit_response(
+        await ctx.respond(
             "Bot in development mode. If active, would post " + f"{ctx.options.title}"
         )
     else:
@@ -61,10 +61,10 @@ async def feedback(ctx):
         if response.status_code == 201:
             logger.info(f"Successfully created Issue: {ctx.options.title}")
             resp_url = json.loads(response.content)["html_url"]
-            await ctx.edit_response(f"Issue URL: {resp_url}")
+            await ctx.respond(f"Issue URL: {resp_url}")
         else:
             logger.error("Response: ", response.content)
-            await ctx.edit_response(
+            await ctx.respond(
                 f"Could not create Issue {ctx.options.title}. Please contact Admin."
             )
 

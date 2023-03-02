@@ -35,6 +35,11 @@ pcs = dict()
 beasts = dict()
 
 
+def assign_default_attack(dict, key):
+    powers = [v for k, v in dict[key].Powers.items() if "Attack" in k]
+    dict[key].Powers["Attack"] = powers[0] if powers else None
+
+
 def get_user_pc(username, pc_selection=None, pc_name=None):
     this_pc = pcs.get(username)
     # logger.info(f"{username}, selected {pc_selection} named {pc_name}: {this_pc}")
@@ -43,6 +48,8 @@ def get_user_pc(username, pc_selection=None, pc_name=None):
             pc_dict = bestiary_pcs.raw_data[pc_selection]
             pc_dict.update(dict(Name=pc_name or username, id=pc_selection))
             pcs[username] = Player(**pc_dict)
+            # Assign default Attack
+            assign_default_attack(pcs, username)
         else:
             pcs[username] = Player(
                 Name=f"{pc_name or username} - Default", id="Default", Type="PC"
@@ -58,6 +65,7 @@ def get_beast(username, beast_name, beast_selection=None):
             beast_dict = bestiary_gm.raw_data[beast_selection]
             beast_dict.update(dict(Name=beast_name, id=beast_selection))
             beasts[beast_name] = Player(**beast_dict)
+            assign_default_attack(beasts, beast_name)
         else:
             beasts[beast_name] = Player(
                 Name=f"{beast_name or username} - Default", id="Default", Type="PC"
@@ -76,31 +84,24 @@ def pc_powers_auto(power=None, auto_interaction=None):
     return list(powers)
 
 
-def gm_powers_auto(attacker=None, target=None, power=None, auto_interaction=None):
-    logger.info(f"1 {attacker}")
-    logger.info(f"2 {target}")
+def gm_powers_auto(power=None, auto_interaction=None):
     logger.info(f"3 {power}")
     logger.info(f"4 {auto_interaction}")
-    if len(attacker.value) < 2 and len(power.value) < 2:
+
+    if not pcs and not beasts:
+        return []
+
+    if len(power.value) < 2:
         powers = set(
             power_name
             for pc in [*pcs.values(), *beasts.values()]
             for power_name in pc.Powers.keys()
-        )
-    elif len(power.value) < 2:
-        powers = set(
-            power_name
-            for pc in [*pcs.values(), *beasts.values()]
-            for power_name in pc.Powers.keys()
-            if attacker.value in pc.Name
-            if power.value in power_name
         )
     else:
         powers = set(
             power_name
             for pc in [*pcs.values(), *beasts.values()]
             for power_name in pc.Powers.keys()
-            if attacker.value in pc.Name
             if power.value in power_name
         )
     return list(itertools.islice(powers, 25))
@@ -109,82 +110,80 @@ def gm_powers_auto(attacker=None, target=None, power=None, auto_interaction=None
 # save to file
 
 
-# # ------ GM TARGET ------
-# @pc_plugin.command()
-# @lightbulb.add_checks(lightbulb.has_roles(1014868119791075508))
-# @lightbulb.option(
-#     "attacker",
-#     "Attacking creature. If PC, username",
-#     choices=list(*beasts.keys(), *pcs.keys()),
-#     default="Random beast",
-# )
-# @lightbulb.option(
-#     "target",
-#     "Who to target.",
-#     choices=list(*beasts.keys(), *pcs.keys()),
-#     default="Random PC",
-# )
-# @lightbulb.option(
-#     "power",
-#     "Which ppower to use. Must use exact power name",
-#     default="Random",
-#     autocomplete=gm_powers_auto,
-# )
-# @lightbulb.command(
-#     "gm_target", "GM uses beat to target entity with power.", aliases=["gm target"]
-# )
-# @lightbulb.implements(lightbulb.SlashCommand)
-# async def gm_target(ctx: lightbulb.Context) -> None:
-#     all_creatures = pcs.update(beasts)
-#     this_beast = all_creatures.get(
-#         ctx.options.attacker, random.choice(list(beasts.values()))
-#     )
-#     this_target = all_creatures.get(
-#         ctx.options.target, random.choice(list(pcs.values()))
-#     )
-#     this_power = this_beast.Powers.get(
-#         ctx.options.power, this_beast.take_action(random.choice(["Major", "Minor"]))
-#     )
+# ------ GM TARGET ------
+@pc_plugin.command()
+@lightbulb.add_checks(lightbulb.has_roles(1014868119791075508))
+@lightbulb.option(
+    "attacker",
+    "Attacking creature.",
+    choices=list(*beasts.keys(), *pcs.keys())[:24],
+    default="Random beast",
+)
+@lightbulb.option(
+    "target",
+    "Who to target.",
+    choices=list(*beasts.keys(), *pcs.keys())[:24],
+    default="Random PC",
+)
+@lightbulb.option(
+    "power",
+    "Which ppower to use. Must use exact power name",
+    default="Random",
+    autocomplete=gm_powers_auto,
+)
+@lightbulb.command(
+    "gm_target", "GM uses beat to target entity with power.", aliases=["gm target"]
+)
+@lightbulb.implements(lightbulb.SlashCommand)
+async def gm_target(ctx: lightbulb.Context) -> None:
+    all_creatures = {**pcs, **beasts, **{pc.Name: pc for pc in pcs.values()}}
+    this_beast = all_creatures.get(
+        ctx.options.attacker, random.choice(list(beasts.values()))
+    )
+    this_target = all_creatures.get(
+        ctx.options.target, random.choice(list(pcs.values()))
+    )
+    this_power = this_beast.Powers.get(ctx.options.power, "Attack")
 
-#     encounter = Encounter(PCs=[this_beast], Enemies=[this_target])
+    encounter = Encounter(PCs=[this_beast], Enemies=[this_target])
 
-#     await ctx.respond(
-#         encounter._apply_power(
-#             attacker=this_beast,
-#             targets=this_target,
-#             power=this_power,
-#             return_string=True,
-#         )
-#     )
+    await ctx.respond(
+        encounter._apply_power(
+            attacker=this_beast,
+            targets=this_target,
+            power=this_power,
+            return_string=True,
+        )
+    )
 
 
-# # ------ PC TARGET ------
-# @pc_plugin.command()
-# @lightbulb.option(
-#     "target", "Who to target.", choices=list(beasts.keys()), default="Random"
-# )
-# @lightbulb.option(
-#     "power",
-#     "Which ppower to use. Must use name shown in your /pc_show_more.",
-#     default="Random",
-#     autocomplete=pc_powers_auto,
-# )
-# @lightbulb.command("pc_target", "Target an enemy with a power.", aliases=["target"])
-# @lightbulb.implements(lightbulb.SlashCommand)
-# async def pc_target(ctx: lightbulb.Context) -> None:
-#     this_pc = get_user_pc(ctx.author.username)
-#     this_target = beasts.get(ctx.options.target)
-#     this_power = this_pc.Powers.get(ctx.options.power)
-#     if not this_power:
-#         this_power = this_pc.take_action(random.choice(["Major", "Minor"]))
+# ------ PC TARGET ------
+@pc_plugin.command()
+@lightbulb.option(
+    "target", "Who to target.", choices=list(beasts.keys()), default="Random"
+)
+@lightbulb.option(
+    "power",
+    "Which power to use. Must use name shown in your /pc_show_more.",
+    default="Random",
+    autocomplete=pc_powers_auto,
+)
+@lightbulb.command("pc_target", "Target an enemy with a power.", aliases=["target"])
+@lightbulb.implements(lightbulb.SlashCommand)
+async def pc_target(ctx: lightbulb.Context) -> None:
+    this_pc = get_user_pc(ctx.author.username)
+    this_target = beasts.get(ctx.options.target)
+    this_power = this_pc.Powers.get(ctx.options.power)
+    if not this_power:
+        this_power = this_pc.take_action(random.choice(["Major", "Minor"]))
 
-#     encounter = Encounter(PCs=[this_pc], Enemies=[this_target])
+    encounter = Encounter(PCs=[this_pc], Enemies=[this_target])
 
-#     await ctx.respond(
-#         encounter._apply_power(
-#             attacker=this_pc, targets=this_target, power=this_power, return_string=True
-#         )
-#     )
+    await ctx.respond(
+        encounter._apply_power(
+            attacker=this_pc, targets=this_target, power=this_power, return_string=True
+        )
+    )
 
 
 # ------ ACTIVATE BEAST ------
@@ -388,7 +387,8 @@ async def pc_show_more(ctx: lightbulb.Context) -> None:
     this_pc = get_user_pc(ctx.author.username)
     non_zero_attribs = str(this_pc.Attribs).split("(")[1][:-1]
     non_zero_skills = ", ".join([f"{s}={n}" for s, n in this_pc.Skills.non_defaults])
-    power_names = ", ".join(list(this_pc.Powers.keys()))
+    # Filter out default Attack
+    power_names = ", ".join([p for p in this_pc.Powers.keys() if p != "Attack"])
 
     output = ""
     output += f"Name: {this_pc.Name}, Level {this_pc.Level} {this_pc.Role}\n"
@@ -403,6 +403,8 @@ async def pc_show_more(ctx: lightbulb.Context) -> None:
 
 def load(bot: lightbulb.BotApp) -> None:
     bot.add_plugin(pc_plugin)
+    get_user_pc("Broz", "Clubs1", "1")
+    get_beast("2", "Grunt")
 
 
 def unload(bot: lightbulb.BotApp) -> None:
