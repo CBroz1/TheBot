@@ -127,9 +127,9 @@ def gm_powers_auto(power=None, auto_interaction=None):
 )
 @lightbulb.option(
     "power",
-    "Which ppower to use. Must use exact power name",
+    "Which power to use. Must use exact power name",
     default="Random",
-    autocomplete=gm_powers_auto,
+    # autocomplete=gm_powers_auto,
 )
 @lightbulb.command(
     "gm_target", "GM uses beat to target entity with power.", aliases=["gm target"]
@@ -166,7 +166,7 @@ async def gm_target(ctx: lightbulb.Context) -> None:
     "power",
     "Which power to use. Must use name shown in your /pc_show_more.",
     default="Random",
-    autocomplete=pc_powers_auto,
+    # autocomplete=pc_powers_auto,
 )
 @lightbulb.command("pc_target", "Target an enemy with a power.", aliases=["target"])
 @lightbulb.implements(lightbulb.SlashCommand)
@@ -193,7 +193,7 @@ async def pc_target(ctx: lightbulb.Context) -> None:
 @lightbulb.option("name", "Name your creature")
 @lightbulb.command(
     "gm_add",
-    "Activates a beast from Beastiary.",
+    "Activates a beast from Bestiary.",
     aliases=["add beast"],
 )
 @lightbulb.implements(lightbulb.SlashCommand)
